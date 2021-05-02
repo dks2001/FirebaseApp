@@ -12,19 +12,33 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.UploadTask;
+
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.UUID;
 
 public class SocialMediaActivity extends AppCompatActivity {
 
@@ -35,7 +49,9 @@ public class SocialMediaActivity extends AppCompatActivity {
     private ImageView imageView;
     private ListView userlistview;
     Bitmap receivedImageBitmap;
-
+    private String imageIdentifier;
+    private ArrayList<String> usernames;
+    private ArrayAdapter arrayAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +65,9 @@ public class SocialMediaActivity extends AppCompatActivity {
         imageView = findViewById(R.id.postImageView);
         userlistview = findViewById(R.id.userlistview);
 
+        usernames = new ArrayList<>();
+        arrayAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1,usernames);
+        userlistview.setAdapter(arrayAdapter);
 
 
         imageView.setOnClickListener(new View.OnClickListener() {
@@ -64,6 +83,13 @@ public class SocialMediaActivity extends AppCompatActivity {
                 } else {
                     getChosenImage();
                 }
+            }
+        });
+
+        createPost.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                uploadImageToServer();
             }
         });
 
@@ -130,6 +156,66 @@ public class SocialMediaActivity extends AppCompatActivity {
                     Toast.makeText(SocialMediaActivity.this, "Error try again", Toast.LENGTH_SHORT).show();
                 }
             }
+        }
+    }
+
+    private void uploadImageToServer() {
+
+        if(receivedImageBitmap !=null) {
+
+            imageIdentifier = UUID.randomUUID() + ".png";
+
+            // Get the data from an ImageView as bytes
+            imageView.setDrawingCacheEnabled(true);
+            imageView.buildDrawingCache();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            receivedImageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+            byte[] data = baos.toByteArray();
+
+            UploadTask uploadTask = FirebaseStorage.getInstance().getReference().child("my_image").child(imageIdentifier).putBytes(data);
+            uploadTask.addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception exception) {
+                    // Handle unsuccessful uploads
+                    Toast.makeText(SocialMediaActivity.this, exception.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                @Override
+                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                    // taskSnapshot.getMetadata() contains file metadata such as size, content-type, etc.
+                    // ...
+                    edtDescription.setVisibility(View.VISIBLE);
+                    FirebaseDatabase.getInstance().getReference().child("my_users").addChildEventListener(new ChildEventListener() {
+                        @Override
+                        public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+                            String username = (String)snapshot.child("username").getValue();
+                            usernames.add(username);
+                            arrayAdapter.notifyDataSetChanged();
+                        }
+
+                        @Override
+                        public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+                        }
+
+                        @Override
+                        public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+
+                        }
+
+                        @Override
+                        public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+
+                        }
+                    });
+                }
+            });
         }
     }
 }
