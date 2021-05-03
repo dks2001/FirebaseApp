@@ -4,8 +4,14 @@
 
     <item
         android:id="@+id/logout"
-        android:orderInCategory="100"
+        android:orderInCategory="101"
         app:showAsAction="always"
         android:title="Logout"/>
+
+    <item
+    android:id="@+id/viewPostItem"
+    android:orderInCategory="100"
+    app:showAsAction="always"
+    android:title="View Post"/>
 
 </menu>

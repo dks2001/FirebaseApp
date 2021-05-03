@@ -19,6 +19,7 @@ import android.provider.MediaStore;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -26,8 +27,10 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
@@ -38,9 +41,10 @@ import com.google.firebase.storage.UploadTask;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.UUID;
 
-public class SocialMediaActivity extends AppCompatActivity {
+public class SocialMediaActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
 
 
     private FirebaseAuth mAuth;
@@ -52,6 +56,8 @@ public class SocialMediaActivity extends AppCompatActivity {
     private String imageIdentifier;
     private ArrayList<String> usernames;
     private ArrayAdapter arrayAdapter;
+    private ArrayList<String> uids;
+    private String imageDownloadLink;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +74,8 @@ public class SocialMediaActivity extends AppCompatActivity {
         usernames = new ArrayList<>();
         arrayAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1,usernames);
         userlistview.setAdapter(arrayAdapter);
+        uids = new ArrayList<>();
+        userlistview.setOnItemClickListener(this);
 
 
         imageView.setOnClickListener(new View.OnClickListener() {
@@ -115,6 +123,10 @@ public class SocialMediaActivity extends AppCompatActivity {
             mAuth.signOut();
             finish();
 
+        } else if(item.getItemId() == R.id.viewPostItem) {
+
+            Intent intent = new Intent(this,ViewPostActivity.class);
+            startActivity(intent);
         }
         return super.onOptionsItemSelected(item);
     }
@@ -189,6 +201,7 @@ public class SocialMediaActivity extends AppCompatActivity {
                         @Override
                         public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
 
+                            uids.add(snapshot.getKey());
                             String username = (String)snapshot.child("username").getValue();
                             usernames.add(username);
                             arrayAdapter.notifyDataSetChanged();
@@ -214,8 +227,26 @@ public class SocialMediaActivity extends AppCompatActivity {
 
                         }
                     });
+
+                    taskSnapshot.getMetadata().getReference().getDownloadUrl().addOnCompleteListener(new OnCompleteListener<Uri>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Uri> task) {
+                                imageDownloadLink = task.getResult().toString();
+                        }
+                    });
                 }
             });
         }
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+        HashMap<String,String> datamapp = new HashMap<>();
+        datamapp.put("fromWhom",FirebaseAuth.getInstance().getCurrentUser().getDisplayName());
+        datamapp.put("imageIdentifier",imageIdentifier);
+        datamapp.put("imageLink",imageDownloadLink);
+        datamapp.put("desc",edtDescription.getText().toString());
+        FirebaseDatabase.getInstance().getReference().child("my_users").child(uids.get(position)).child("receiver_post").push().setValue(datamapp);
     }
 }

@@ -16,6 +16,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.database.FirebaseDatabase;
 
 public class MainActivity extends AppCompatActivity {
@@ -49,9 +50,22 @@ public class MainActivity extends AppCompatActivity {
                             public void onComplete(@NonNull Task<AuthResult> task) {
                                 if (task.isSuccessful()) {
 
-                                    FirebaseDatabase.getInstance().getReference().child("my_users").child(task.getResult().getUser().getUid()).child("username").setValue(email.getText().toString());
+                                    FirebaseDatabase.getInstance().getReference().child("my_users").child(task.getResult().getUser().getUid()).child("username").setValue(username.getText().toString());
                                     Log.d("", "createUserWithEmail:success");
                                     FirebaseUser user = mAuth.getCurrentUser();
+
+                                    UserProfileChangeRequest updateprofile = new UserProfileChangeRequest.Builder()
+                                            .setDisplayName(username.getText().toString())
+                                            .build();
+
+                                    FirebaseAuth.getInstance().getCurrentUser().updateProfile(updateprofile)
+                                            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                @Override
+                                                public void onComplete(@NonNull Task<Void> task) {
+
+                                                }
+                                            });
+
                                     transitionToSocialMediaActivity();
 
                                 } else {
@@ -81,6 +95,10 @@ public class MainActivity extends AppCompatActivity {
                                     Log.d("", "signInWithEmail:success");
                                     FirebaseUser user = mAuth.getCurrentUser();
                                     transitionToSocialMediaActivity();
+
+
+
+
 
                                 } else {
                                     // If sign in fails, display a message to the user.
